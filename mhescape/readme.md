@@ -4,6 +4,9 @@
 ```
 //mhe e(xit) (destination)
 
+example: //mhe e rulude
+Assuming you are in Jeuno, will exit the Mog House to Ru'Lude Gardens
+
 Destination list:
 
 San d'Oria:
