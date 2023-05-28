@@ -48,7 +48,7 @@ garden
 Unresolved issues:
 - Injected packet 0x05E has a malformed value in _unknown1. Doesn't seem to impact performance.
 - Not able to block the clients default 0x00D response. Currently sending correct response AND blank response from client.
-- All of the MH Exit packets are formatted assuming ALL MH Exit quests are complete and Mog Garden is unlocked. Use at your own right if that isn't the case!
+- All of the MH Exit packets are formatted assuming ALL MH Exit quests are complete and Mog Garden is unlocked. Use at your own risk if that isn't the case!
 
 To-Do:
 - See if I can track MH Exit quest status and Mog Garden availability to prevent sending inappropriate packets to server
