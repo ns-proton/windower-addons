@@ -4,21 +4,19 @@
 _addon.name = 'MogHouseEscape'
 _addon.author = 'Proton'
 _addon.commands = {'mhe'}
-_addon.version = '2023.05.28.alpha'
+_addon.version = '2023.06.05.alpha'
 
 ---------------------
 --   Requires
 ---------------------
-packets = require('packets')
 require('sendall')
-windowerRes_zones = require('resources').zones
+local packets = require('packets')
 
 -----------------------------------
 --   Full Scope Addon Variables
 -----------------------------------
 
 local needToConfirm = false
-local suppressClientConfirm = false
 local residentialZoneIDs = {
     sandoria = {230, 231, 232},
     bastok = {234, 235, 236},
@@ -88,13 +86,11 @@ local destinationMatrix = {
 --   Addon Functions
 ---------------------
 
-local function menuDisposition()
-    -- todo: determine possible formats for 0x05E based on quest completion
-    --      1) no exit quests
-    --      2a) exit quest but no mog garden
-    --      2b) exit quest and mog garden
-    -- Think about how to check for 2nd floor status, and tell which floor we are currently on.
-    --      No support for switching floors for now
+local function order_participants(participants)
+    local player = windower.ffxi.get_player().name
+	participants:delete(player)
+    table.sort(participants)
+    return participants
 end
 
 -- sends 0x05E to initiate MH Exit
@@ -122,27 +118,9 @@ local function sendExit(argRegion, argZone)
         local exitPacket = packets.new('outgoing', 0x05E, data)
         packets.inject(exitPacket)
         needToConfirm = true
-        suppressClientConfirm = true
     else
         print('Invalid request')
     end
-end
-
--- client will send the 0x00D on its own, to respond to the server's 0x00B. But if we inject the 0x05E the 0x00D isn't formatted right.
--- On MH exit, the 0x00D should have _unknown3 = R and _unknown4 = Q. When we inject 0x05E and let the client respond it sends all 0s for 0x00D
--- Todo: intercept and augment 0x00D to be formatted as below.
-local function confirmExit()
-    
-    local data = {
-        ['_unknown1'] = 0x00,
-        ['_unknown2'] = 0x00,
-        ['_unknown3'] = 0x72,
-        ['_unknown4'] = 0x71,
-    }
-
-    local confirmPacket = packets.new('outgoing', 0x00D, data)
-    packets.inject(confirmPacket)
-    needToConfirm = false
 end
 
 -- using windower.ffxi.get_info().zone and the arguments supplied by the user for desired exit destination, return the appropriate parameters to create packet 0x05E
@@ -189,11 +167,15 @@ local function determineExitPacketParams(argRequestedExit)
     end
 end
 
+function receive_send_all(msg)
+    commands.e(msg)
+end
+
 ---------------------
 --   Addon Commands
 ---------------------
 
-local commands = {}
+commands = {}
 
 --exit the MH, either to where you entered (no args), or specify a location (1 arg)
 commands.exit = function(argRequestedExit)
@@ -210,6 +192,25 @@ commands.exit = function(argRequestedExit)
 end
 commands.e = commands.exit
 
+commands.all = function(...)
+
+    local participants = get_participants()
+	participants = order_participants(participants)
+
+    local args = {...}
+    local cmd = args[1]
+    if not args[2] then
+        args[2] = 'exit'
+    end
+    if cmd == 'e' or cmd == 'exit' then
+        send_all(args[2], 0.2, participants)
+        commands.e(args[2])
+    else
+        print('Invalid command')
+    end
+end
+commands.a = commands.all
+
 commands.help = function()
     print("Todo: Write help info")
 end
@@ -218,16 +219,23 @@ end
 --   Windower Events
 ---------------------
 
-windower.register_event('incoming chunk', function(id,data,modified,injected,blocked)
-    if id == 0x00B and needToConfirm then
-        confirmExit()
-    end
-end)
-
+-- modify the client's 0x00D response after we send the 0x05E to exit the MH
 windower.register_event('outgoing chunk', function(id,data,modified,injected,blocked)
-    if id == 0x00D and suppressClientConfirm then
-        suppressClientConfirm = false
-        return true
+    if id == 0x00D and needToConfirm then
+        local tempPacket = packets.parse('outgoing', data)
+	
+	    tempPacket['_unknown3'] = 114
+        tempPacket['_unknown4'] = 113
+
+        --[[
+        print(tempPacket['_unknown1'])
+        print(tempPacket['_unknown2'])
+        print(tempPacket['_unknown3'])
+        print(tempPacket['_unknown4'])
+        ]]
+
+	    needToConfirm = false
+        return packets.build(tempPacket)
     end
 end)
 
