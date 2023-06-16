@@ -59,3 +59,4 @@ Unresolved issues:
 
 To-Do:
 - Implement tracking of 0x00A (for MH Exit quest completion) and 0x067 to track Mog Garden and 2nd floor availability.
+- Some kind of fuzzy find for MH Exit destination names.
